@@ -1,48 +1,186 @@
-//
-// Created by Luis on 28/08/2024.
-//
-
-#ifndef UNTITLED24_FORWARD_LIST_H
-#define UNTITLED24_FORWARD_LIST_H
-
 #include <iostream>
+//#include <cmath>
 
 template<typename T>
-struct Node {
+struct Nodo {
     T data;
-    Node* next;
-
-    Node(T data) : data(data), next(nullptr) {}  // Constructor para facilitar la creación de nodos
+    Nodo<T>* next;
 };
 
 template<typename T>
 class List {
 private:
-    Node<T>* head;
-    int list_sz; // variable para el tamaño
+    Nodo<T>* head;
 
-    // Función para dividir la lista en dos mitades
-    Node<T>* split(Node<T>* head) {
-        Node<T>* fast = head->next;
-        Node<T>* slow = head;
+public:
+    List() : head(nullptr) {}
 
-        // Fast avanza dos nodos y slow avanza uno
-        while (fast != nullptr && fast->next != nullptr) {
-            fast = fast->next->next;
-            slow = slow->next;
-        }
-
-        Node<T>* mid = slow->next;
-        slow->next = nullptr;  // Cortar la lista en dos mitades
-        return mid;
+    T front() {
+//        if (head == nullptr) {
+//            std::cout << "La lista esta vacia" << std::endl;;
+//        }
+        return head->data;
     }
 
-    // Función para fusionar dos sublistas ordenadas
-    Node<T>* merge(Node<T>* left, Node<T>* right) {
-        if (!left) return right;
-        if (!right) return left;
+    T back() {
+//        if (head == nullptr) {
+//            std::cout << "La lista esta vacia" << std::endl;;
+//        }
+        Nodo<T>* temp = head;
+        while(temp->next != NULL) {
+            temp = temp->next;
+        }
+        return temp->data;
+    }
 
-        Node<T>* result;
+    void push_front(T t) {
+        Nodo<T>* nodo = new Nodo<T>;
+        nodo->data = t;
+        nodo->next = head;
+        head = nodo;
+    }
+
+    void push_back(T t) {
+        Nodo<T>* nodo = new Nodo<T>;
+        nodo->data = t;
+
+//        nodo->next = nullptr;
+//
+//        if(head == nullptr){
+//            head = nodo;
+//        }
+//        else{
+            Nodo<T>* temp = head;
+            while (temp->next != NULL)
+                temp = temp->next;
+            temp->next = nodo;
+//        }
+        nodo->next = NULL;
+    }
+
+    T pop_front() {
+//        if (head == nullptr) {
+//            std::cout << "La lista esta vacia" << std::endl;;
+//        }
+        Nodo<T>* temp = head;
+//        T value = temp->data;
+        head = head->next;
+        delete temp;
+
+//        return value;
+        return head->data;
+    }
+
+    T pop_back() {
+//        if (head == nullptr) {
+//            std::cout << "La lista esta vacia" << std::endl;;
+//        }
+
+        if (head->next == NULL) {
+            T value = head->data;
+            delete head;
+            head = NULL;
+            return value;
+        }
+        else {
+            Nodo<T>* temp = head;
+//            Node<T>* tprev = nullptr;
+//            while (temp->next != nullptr) {
+//                tprev = temp;
+//                temp = temp->next;
+//            }
+
+            while(temp->next->next != NULL)
+                temp = temp->next;
+            T value = temp->data;
+            delete temp->next;
+            temp->next = NULL;
+
+            return value;
+        }
+    }
+
+    T operator[](int pos) {
+        Nodo<T>* temp = head;
+        int j = 0;
+//        while(temp != nullptr){
+//
+//            if(j == pos){
+//                return temp->data;
+//            }
+//            temp = temp->next;
+//            j++;
+//        }
+        for(int i = 0; i<pos; ++i) {
+            temp = temp->next;
+        }
+        return temp->data;
+//        return -1; //fuera de rango
+    }
+
+    bool empty() {
+        return head == nullptr;
+    }
+
+    int size() {
+        Nodo<T>* temp = head;
+        int cont = 0; //(1)
+        while(temp != nullptr) {
+            temp = temp->next;
+            ++cont;
+        }
+        return cont;
+    }
+
+//    void clear() {
+//        Nodo<T>* current = head;
+//        while (current != nullptr) {
+//            Nodo<T>* next = current->next;
+//            delete current;
+//            current = next;
+//        }
+//        head = nullptr;
+//    }
+
+    void clear() {
+        while(head != NULL) {
+            Nodo<T>* temp = head;
+            head = head->next;
+            delete temp;
+        }
+    }
+
+//  MERGE SORT ----------------------------------------
+
+    Nodo<T>* mergeSort(Nodo<T>* head) {
+        if (head == NULL || head->next == NULL) {
+            return head;
+        }
+
+
+        Nodo<T>* middle = getMiddle(head);
+        Nodo<T>* nextOfMiddle = middle->next;
+
+        middle->next = NULL;
+
+
+        Nodo<T>* left = mergeSort(head);
+        Nodo<T>* right = mergeSort(nextOfMiddle);
+
+
+        Nodo<T>* sortedList = merge(left, right);
+
+        return sortedList;
+    }
+
+    Nodo<T>* merge(Nodo<T>* left, Nodo<T>* right) {
+
+        if (left == NULL) return right;
+        if (right == NULL) return left;
+
+        Nodo<T>* result = NULL;
+
+
         if (left->data <= right->data) {
             result = left;
             result->next = merge(left->next, right);
@@ -50,194 +188,61 @@ private:
             result = right;
             result->next = merge(left, right->next);
         }
+
         return result;
     }
 
-    // Función recursiva para aplicar Merge Sort
-    Node<T>* mergeSort(Node<T>* head) {
-        if (!head || !head->next)
-            return head;
+    Nodo<T>* getMiddle(Nodo<T>* head) {
+        if (head == NULL) return head;
 
-        Node<T>* mid = split(head);
-        Node<T>* left = mergeSort(head);
-        Node<T>* right = mergeSort(mid);
+        Nodo<T>* slow = head;
+        Nodo<T>* fast = head->next;
 
-        return merge(left, right);
-    }
-
-
-public:
-    List() : head(nullptr), list_sz(0) {}  // Constructor que inicializa la cabeza a nullptr
-
-    ~List() {  // Destructor para limpiar toda la lista al finalizar
-        clear();
-    }
-
-    // Retorna el elemento al comienzo de la lista
-    T front() {
-        if (head != nullptr)
-            return head->data;
-        throw std::out_of_range("Lista vacia");
-    }
-
-    // Retorna el elemento al final de la lista
-    T back() {
-        if (head == nullptr)
-            throw std::out_of_range("List is empty");
-
-        Node<T>* temp = head;
-        while (temp->next != nullptr)
-            temp = temp->next;
-
-        return temp->data;
-    }
-
-    // Método para insertar un nodo al frente de la lista
-    void push_front(int value) {
-        Node<T>* nodo = new Node<T>(value);
-        nodo->next = head;
-        head = nodo;
-        list_sz++;
-    }
-
-    // Método para insertar un nodo al final de la lista
-    void push_back(int value) {
-        Node<T>* nodo = new Node<T>(value);
-        if (head == nullptr) {
-            head = nodo;
-        } else {
-            Node<T>* temp = head;
-            while (temp->next != nullptr)
-                temp = temp->next;
-            temp->next = nodo;
-        }
-        list_sz++;
-    }
-
-    // Método para eliminar el primer nodo de la lista
-    // Remueve y retorna el elemento al comienzo de la lista
-    void pop_front() {
-        if (head == nullptr)
-            throw std::out_of_range("Lista vacia");
-
-        Node<T>* temp = head;
-        T value = head->data;
-        head = head->next;
-        delete temp;
-        list_sz--;
-        return value;
-    }
-
-    // Método para eliminar el último nodo de la lista
-    // Remueve y retorna el elemento al final de la lista
-    void pop_back() {
-        if (head == nullptr)
-            throw std::out_of_range("Lista vacia");
-
-        if (head->next == nullptr) {
-            T value = head->data;
-            delete head;
-            head = nullptr;
-            list_sz--;
-            return value;
+        while (fast != NULL && fast->next != NULL) {
+            slow = slow->next;
+            fast = fast->next->next;
         }
 
-        Node<T>* temp = head;
-        while (temp->next->next != nullptr)
-            temp = temp->next;
-
-        T value = temp->next->data;
-        delete temp->next;
-        temp->next = nullptr;
-        list_sz--;
-        return value;
+        return slow;
     }
 
-    // Retorna el elemento en la posición indicada (indexación con operador [])
-    T operator[](int index) {
-        if (index < 0 || index >= list_sz)
-            throw std::out_of_range("Indice fuera de rango");
-
-        Node<T>* temp = head;
-        for (int i = 0; i < index; i++)
-            temp = temp->next;
-
-        return temp->data;
-    }
-
-    // Retorna si la lista está vacía o no
-    bool empty() const {
-        return head == nullptr;
-    }
-
-    // Retorna el tamaño de la lista
-    int size() const {
-        return list_sz;
-    }
-
-//    // Método para insertar un nodo en una posición específica
-//    void insert(int value, int pos) {
-//        if (pos < 0) return;  // Validar posición no negativa
-//
-//        Node<T>* nodo = new Node<T>(value);
-//        if (pos == 0) {
-//            nodo->next = head;
-//            head = nodo;
-//            return;
-//        }
-//
-//        Node<T>* temp = head;
-//        for (int i = 0; i < pos - 1 && temp != nullptr; i++) {
-//            temp = temp->next;
-//        }
-//
-//        if (temp == nullptr) {
-//            delete nodo;  // La posición es mayor al tamaño de la lista
-//        } else {
-//            nodo->next = temp->next;
-//            temp->next = nodo;
-//        }
-//    }
-
-    // Ordena la lista utilizando Merge Sort
     void sort() {
         head = mergeSort(head);
     }
 
-    // Método para limpiar toda la lista
-    void clear() {
-        while (head != nullptr) {
-            Node<T>* temp = head;
-            head = head->next;
-            delete temp;
-        }
-        list_sz = 0;
-    }
+//  --------------------------------------------------
 
-    // Revierte la lista
-    void reverse() {
-        Node<T>* prev = nullptr;
-        Node<T>* current = head;
-        Node<T>* next = nullptr;
+//    void sort(){
+//
+//    }
 
-        while (current != nullptr) {
-            next = current->next;
-            current->next = prev;
-            prev = current;
-            current = next;
+    void reverse(){
+        Nodo<T>* prev = NULL;
+        Nodo<T>* curr = head;
+        Nodo<T>* next = NULL;
+
+        while(curr != NULL) {
+            next = curr->next;
+            curr->next = prev;
+            prev = curr;
+            curr = next;
         }
         head = prev;
     }
 
-    // Método para imprimir la lista
-    void print() const {
-        Node<T>* temp = head;
-        while (temp != nullptr) {
-            std::cout << temp->data << " ";
+    void insert(Nodo<T>* nodo, int pos) {
+        Nodo<T>* temp = head;
+        int i = 0;
+        while(i++ < pos - 1) temp = temp->next;
+        nodo->next = temp->next;
+        temp->next = nodo;
+    }
+
+    void print() {
+        Nodo<T>* temp = head;
+        while (temp != NULL) {
+            std::cout<< temp->data;
             temp = temp->next;
         }
-        std::cout << std::endl;
     }
 };
-
-#endif //UNTITLED24_FORWARD_LIST_H
