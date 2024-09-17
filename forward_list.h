@@ -245,4 +245,46 @@ public:
             temp = temp->next;
         }
     }
+
+
+    // Añadir esto a tu clase List
+    bool find(const T& value) const {
+        Nodo<T>* temp = head;
+        while (temp != nullptr) {
+            if (temp->data == value) {
+                return true;
+            }
+            temp = temp->next;
+        }
+        return false;
+    }
+
+// Añadir esto a tu clase List
+    bool remove(const T& value) {
+        Nodo<T>* temp = head;
+        Nodo<T>* prev = nullptr;
+
+        // Si el nodo a eliminar es el primer nodo
+        if (temp != nullptr && temp->data == value) {
+            head = temp->next;
+            delete temp;
+            return true;
+        }
+
+        // Buscar el nodo a eliminar
+        while (temp != nullptr && temp->data != value) {
+            prev = temp;
+            temp = temp->next;
+        }
+
+        // Si el valor no se encuentra
+        if (temp == nullptr) {
+            return false;
+        }
+
+        // Desvincular el nodo de la lista
+        prev->next = temp->next;
+        delete temp;
+        return true;
+    }
 };
