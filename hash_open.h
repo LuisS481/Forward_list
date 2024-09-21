@@ -1,61 +1,70 @@
+#ifndef FORWARD_LIST_HASH_TABLE_OPEN_H
+#define FORWARD_LIST_HASH_TABLE_OPEN_H
+
 #include <iostream>
-#include <random> // Para generación de números aleatorios
-#include <utility> // Para std::pair
+#include <vector>
+#include <cmath>
+#include <sstream>
+#include <random>
+#include <optional>
 
 template<typename T>
-class Hash_table{
-    T* table; // Array de la tabla hash
-    bool* occupied; // Array para rastrear si la posición está ocupada
-    bool* deleted; // Array para rastrear si la posición está eliminada
+class Hash_Table {
+private:
+    struct Entry {
+        T data;
+        bool occupied = false; // Indica si la entrada está ocupada
+        bool deleted = false;  // Indica si la entrada fue eliminada
+    };
 
-    int sz;
-    int cont;
+    std::vector<Entry> hash_table;
+    int HTsz;
+    int capacity;
 
-    // Parámetros aleatorios
-    size_t a, b, p;
+    double am = 0.6180339887; // Constante (0 < a < 1)
+    int a, b; // Parámetros aleatorios
+    int p;
 
     // Número primo mayor que el tamaño de la tabla
-    static const size_t prime = 4294967311; // Puedes usar un primo grande como 2^32 - 5
+    const size_t prime = 1000003;
 
-    // Función hash que convierte cualquier objeto en un valor de hash usando bytes
-    int hash_funct(const T& key, size_t sz) const {
-        const unsigned char* data = reinterpret_cast<const unsigned char*>(&key);
-        size_t dataSize = sizeof(key);
-        unsigned long hash = 5381;  // Inicializamos con un valor base (DJB2)
-
-        for (size_t i = 0; i < dataSize; i++) {
-            hash = ((hash << 5) + hash) + data[i];  // hash * 33 + data[i]
+    // Función para convertir cualquier tipo a un valor numérico
+    int K_bytes(const T& key) const {
+        std::ostringstream oss;
+        oss.write(reinterpret_cast<const char*>(&key), sizeof(key));
+        std::string bytes = oss.str();
+        int hash = 0;
+        for (unsigned char b : bytes) {
+            hash += b; // Sumar valores de bytes
         }
-
-        return ((a * hash + b) % p) % sz;
+        return hash;
     }
 
-    void rehash(int nwSize) {
-        T* oldTable = table;
-        bool* oldOccupied = occupied;
-        bool* oldDeleted = deleted;
-        int oldsz = sz;
-        sz = nwSize;
-        table = new T[sz];
-        occupied = new bool[sz]{false};
-        deleted = new bool[sz]{false};
-        cont = 0;
+    int u_hash_funct(const T key, int attempt) {
+        int hkey = K_bytes(key);
+        int hash_index = (hkey + attempt) % HTsz; // Sondeo lineal
+        return hash_index;
+    }
 
-        for (int i = 0; i < oldsz; i++) {
-            if (oldOccupied[i] && !oldDeleted[i]) {
-                insert(oldTable[i]);
+    void rehash(int Newsz) {
+        std::vector<Entry> new_hash_table(Newsz);
+        int old_HTsz = HTsz;
+        HTsz = Newsz;
+        capacity = 0; // Reiniciar capacidad
+
+        // Reinsertar todos los elementos en la nueva tabla
+        for (const auto& entry : hash_table) {
+            if (entry.occupied && !entry.deleted) {
+                insert(entry.data); // Reinsertar elementos
             }
         }
-        delete[] oldTable;
-        delete[] oldOccupied;
-        delete[] oldDeleted;
+
+        hash_table = std::move(new_hash_table); // Reemplazar la tabla vieja por la nueva
     }
 
 public:
-    Hash_table(int size): sz(size), cont(0) {
-        table = new T[sz];
-        occupied = new bool[sz]{false};
-        deleted = new bool[sz]{false};
+    Hash_Table(int size) : HTsz(size), capacity(0) {
+        hash_table.resize(HTsz); // Inicializar el vector de entradas con el tamaño de la tabla
 
         // Seleccionar aleatoriamente los parámetros a y b
         std::random_device rd;
@@ -64,122 +73,105 @@ public:
 
         a = dis(gen);
         b = dis(gen);
-        p = prime;
     }
 
     void insert(const T& key) {
-        int index = hash_funct(key, sz);
-        int start = index;
+        if (capacity >= 0.75 * HTsz) {
+            rehash(2 * HTsz); // Redimensionar si la carga es mayor al 75%
+        }
 
-        do {
-            if (!occupied[index] || deleted[index]) {
-                table[index] = key;
-                occupied[index] = true;
-                deleted[index] = false;
-                cont++;
-                // Redimensionar si la carga de la tabla es mayor al 75%
-                if(cont > 0.75 * sz) {
-                    rehash(2 * sz);
-                }
-                return;
-            } else if (table[index] == key) {
-                // Si el elemento ya existe, no se hace nada
+        int attempt = 0;
+        while (attempt < HTsz) {
+            int index = u_hash_funct(key, attempt);
+            if (!hash_table[index].occupied || hash_table[index].deleted) {
+                hash_table[index].data = key;
+                hash_table[index].occupied = true;
+                hash_table[index].deleted = false;
+                capacity++;
                 return;
             }
-
-            index = (index + 1) % sz;
-        } while (index != start);
-    }
-
-    bool search(const T& key) const {
-        int index = hash_funct(key, sz);
-        int start = index;
-
-        do {
-            if (!occupied[index]) {
-                return false;
-            } else if (table[index] == key) {
-                return true;
-            }
-
-            index = (index + 1) % sz;
-        } while (index != start);
-
-        return false;
-    }
-
-    void remove(const T& key) {
-        int index = hash_funct(key, sz);
-        int start = index;
-
-        do {
-            if (!occupied[index]) {
-                return;
-            } else if (table[index] == key) {
-                deleted[index] = true;
-                cont--;
-                // Redimensionar si la carga de la tabla es menor al 25% después de eliminar
-                if (cont < 0.25 * sz && sz > 10) {
-                    rehash(sz / 2);
-                }
-                return;
-            }
-
-            index = (index + 1) % sz;
-        } while (index != start);
-    }
-
-    bool empty() const {
-        return cont == 0;
-    }
-
-    // Imprimir la tabla hash
-    void print() const {
-        for (int i = 0; i < sz; i++) {
-            if (occupied[i] && !deleted[i]) {
-                std::cout << "Bucket " << i << ": " << table[i] << std::endl;
-            } else if (deleted[i]) {
-                std::cout << "Bucket " << i << ": [Deleted]" << std::endl;
-            } else {
-                std::cout << "Bucket " << i << ": [Empty]" << std::endl;
-            }
+            attempt++;
         }
     }
 
+    bool search(const T& key) {
+        int attempt = 0;
+        while (attempt < HTsz) {
+            int index = u_hash_funct(key, attempt);
+            if (!hash_table[index].occupied) {
+                return false; // Entrada vacía, no está presente
+            }
+            if (hash_table[index].data == key && !hash_table[index].deleted) {
+                return true; // Elemento encontrado
+            }
+            attempt++;
+        }
+        return false; // Elemento no encontrado
+    }
 
-    ~Hash_table() {
-        delete[] table;
-        delete[] occupied;
-        delete[] deleted;
+    void remove(const T& key) {
+        int attempt = 0;
+        while (attempt < HTsz) {
+            int index = u_hash_funct(key, attempt);
+            if (!hash_table[index].occupied) {
+                return; // Entrada vacía, no se puede eliminar
+            }
+            if (hash_table[index].data == key && !hash_table[index].deleted) {
+                hash_table[index].deleted = true; // Marcar como eliminado
+                capacity--;
+                if (capacity < 0.25 * HTsz && HTsz > 10) {
+                    rehash(HTsz / 2);
+                }
+                return;
+            }
+            attempt++;
+        }
+    }
+
+    bool empty() {
+        return capacity == 0;
     }
 };
 
+// Especialización de K_bytes para std::string
+template<>
+int Hash_Table<std::string>::K_bytes(const std::string& key) const {
+    int hash = 0;
+    for (char c : key) {
+        hash += static_cast<unsigned char>(c); // Sumar cada byte de la cadena
+    }
+    return hash;
+}
+
+#endif //FORWARD_LIST_HASH_TABLE_OPEN_H
+
 int main() {
-    // Crear una tabla hash con 10 buckets
-    HashTable<int> hashTable(10);
+    Hash_Table<std::string> hashTable(10); // Crear una tabla hash con tamaño 10
 
-    // Insertar algunos valores en la tabla hash
-    hashTable.insert(10);
-    hashTable.insert(20);
-    hashTable.insert(30);
-    hashTable.insert(40);
-    hashTable.insert(50);
+    // Casos de prueba para insertar elementos
+    std::cout << "Insertando elementos:\n";
+    hashTable.insert("apple");
+    hashTable.insert("banana");
+    hashTable.insert("orange");
+    hashTable.insert("grape");
+    hashTable.insert("pear");
 
-    // Imprimir el contenido de la tabla hash
-    std::cout << "Contenido de la tabla hash después de insertar algunos valores:" << std::endl;
-    hashTable.print();
+    // Comprobar la búsqueda de elementos
+    std::cout << "\nBuscando elementos:\n";
+    std::cout << "Esta 'banana'? " << (hashTable.search("banana") ? "Si" : "No") << std::endl;
+    std::cout << "Esta 'kiwi'? " << (hashTable.search("kiwi") ? "Si" : "No") << std::endl;
 
-    // Buscar algunos valores en la tabla hash
-    std::cout << "Buscar 20: " << (hashTable.search(20) ? "Encontrado" : "No encontrado") << std::endl;
-    std::cout << "Buscar 100: " << (hashTable.search(100) ? "Encontrado" : "No encontrado") << std::endl;
+    // Comprobar la eliminación de elementos
+    std::cout << "\nEliminando elementos:\n";
+    hashTable.remove("banana");
+    std::cout << "Esta 'banana' después de eliminarla? " << (hashTable.search("banana") ? "Si" : "No") << std::endl;
 
-    // Eliminar un valor de la tabla hash
-    hashTable.remove(20);
-    std::cout << "Contenido de la tabla hash después de eliminar 20:" << std::endl;
-    hashTable.print();
+    // Verificar comportamiento al eliminar un elemento que no existe
+    std::cout << "Eliminando 'kiwi' (no existe):\n";
+    hashTable.remove("kiwi"); // No debería causar problemas
 
-    // Verificar si la tabla está vacía
-    std::cout << "La tabla está vacía: " << (hashTable.empty() ? "Sí" : "No") << std::endl;
+    // Comprobar la carga de la tabla
+    std::cout << "\nLa tabla está vacía? " << (hashTable.empty() ? "Si" : "No") << std::endl;
 
     return 0;
 }
