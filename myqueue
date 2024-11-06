@@ -1,0 +1,33 @@
+#include <vector>
+using namespace std;
+
+class MyQueue {
+private:
+    vector<pair<int, int>> data;
+    int frontIndex;
+
+public:
+    MyQueue() : frontIndex(0) {}
+
+    bool empty() {
+        return frontIndex >= data.size();
+    }
+
+    void push(pair<int, int> value) {
+        data.push_back(value);
+    }
+
+    pair<int, int> front() {
+        return data[frontIndex];
+    }
+
+    void pop() {
+        if (!empty()) {
+            frontIndex++;
+        }
+    }
+
+    int size() {
+        return data.size() - frontIndex;
+    }
+};
